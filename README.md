@@ -9,7 +9,6 @@ known.
 
 - [Pre-requisites](#pre-requisites)
 - [Usage](#usage)
-- [Contributions](#contributions)
 - [Acknowledgements](#acknowledgements)
 - [License](#license)
 
