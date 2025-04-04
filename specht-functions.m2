@@ -30,17 +30,19 @@ SpechtIdeal(Partition, Ring) := (p, R) -> (
 SpechtIdeal(Partition) := (p) -> (
     SpechtIdeal(p, QQ)
 );
-
-getRow = method();
-getRow(TableauList,ZZ) := (tableaux,i) -> (
-    flatten entries tableaux#matrix^{i}
+-- with list rather than partition
+SpechtIdeal(List, Ring) := (l, R) -> (
+    SpechtIdeal(new Partition from l, R)
+);
+SpechtIdeal(List) := (l) -> (
+    SpechtIdeal(new Partition from l, QQ)
 );
 
 revSpechtPolynomials = method(Options => {AsExpression => false});
 revSpechtPolynomials(Partition,PolynomialRing) := o-> (p, R) -> (
     revStandard := revStdTableaux(p);
     firstPolynomial := spechtPolynomial(revStandard_0, R, AsExpression => o.AsExpression);
-    hashTable apply(revStandard#length, i-> getRow(revStandard, i) => permutePolynomial(getRow(revStandard, i), firstPolynomial))
+    for i from 0 to (revStandard#length - 1) list spechtPolynomial(revStandard_i, R, AsExpression => o.AsExpression)
 );
 
 MonSpechtIdeal = method();
@@ -51,13 +53,21 @@ MonSpechtIdeal(Partition, Ring) := (p, R) -> (
     parts := dominatedPartitions(p);
     polys := {};
     for part in parts do (
-        polys = join(polys, values(revSpechtPolynomials(part, S)));
+        polys = join(polys, revSpechtPolynomials(part, S));
     );
-    for poly in polys list leadTerm(poly)
+    polys = for poly in polys list leadTerm(poly);
+    monomialIdeal polys
 );
 -- retuns the specht ideal associated with partition p in Q[X_n]
 MonSpechtIdeal(Partition) := (p) -> (
     MonSpechtIdeal(p, QQ)
+);
+-- with list rather than partition
+MonSpechtIdeal(List, Ring) := (l, R) -> (
+    MonSpechtIdeal(new Partition from l, R)
+);
+MonSpechtIdeal(List) := (l) -> (
+    MonSpechtIdeal(new Partition from l, QQ)
 );
 
 revStdTableaux = method();
@@ -79,9 +89,32 @@ revStdTableaux(Partition) := p->(
     revTableaux
 );
 
-dimTest = method();
-dimTest(ZZ, ZZ) := (d, k) -> (
-    p := new Partition from{2 + k, 2, 1, 1};
-    I := SpechtIdeal(p);
-    hilbertFunction({d}, QQ[x_0..x_(5 + k)]) - hilbertFunction({d}, I)
+spechtDim = method();
+spechtDim(ZZ, Partition, Ring) := (d, p, R) -> (
+    n := sum(p);
+    I := SpechtIdeal(p, R);
+    hilbertFunction({d}, R[x_0..x_(n - 1)]) - hilbertFunction({d}, I)
+);
+spechtDim(ZZ, Partition) := (d, p) -> (
+    n := sum(p);
+    I := SpechtIdeal(p, QQ);
+    hilbertFunction({d}, QQ[x_0..x_(n - 1)]) - hilbertFunction({d}, I)
+);
+spechtDim(ZZ, List, Ring) := (d, l, R) -> (
+    p := new Partition from l;
+    n := sum(p);
+    I := SpechtIdeal(p, R);
+    hilbertFunction({d}, R[x_0..x_(n - 1)]) - hilbertFunction({d}, I)
+);
+spechtDim(ZZ, List) := (d, l) -> (
+    p := new Partition from l;
+    n := sum(p);
+    I := SpechtIdeal(p, QQ);
+    hilbertFunction({d}, QQ[x_0..x_(n - 1)]) - hilbertFunction({d}, I)
+);
+
+isSpechtMonomial = method();
+isSpechtMonomial(Partition) := (p) -> (
+    M = MonSpechtIdeal(p);
+    isMember((x_0)^3, M)
 );
