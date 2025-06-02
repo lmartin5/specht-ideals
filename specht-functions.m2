@@ -118,3 +118,31 @@ isSpechtMonomial(Partition) := (p) -> (
     M = MonSpechtIdeal(p);
     isMember((x_0)^3, M)
 );
+
+QuotientSpechtIdeal = method();
+-- retuns the ideal <I(lambda) : x_1^i, x_1> associated with partition p in R[X_n]
+QuotientSpechtIdeal(Partition, ZZ, Ring) := (p, i, R) -> (
+    n := sum(p);
+    S := R[x_0..x_(n-1), MonomialOrder=>Lex];
+    parts := dominatedPartitions(p);
+    polys := {};
+    for part in parts do (
+        polys = join(polys, revSpechtPolynomials(part, S));
+    );
+    polys = for poly in polys list leadTerm(poly);
+    M = monomialIdeal polys;
+    J = M:ideal{(x_0)^i};
+    J + ideal{x_0}
+);
+-- retuns the specht ideal associated with partition p in Q[X_n]
+QuotientSpechtIdeal(Partition, ZZ) := (p, i) -> (
+    QuotientSpechtIdeal(p, i, QQ)
+);
+-- with list rather than partition
+QuotientSpechtIdeal(List, ZZ, Ring) := (l, i, R) -> (
+    QuotientSpechtIdeal(new Partition from l, i, R)
+);
+QuotientSpechtIdeal(List, ZZ) := (l, i) -> (
+    QuotientSpechtIdeal(new Partition from l, i, QQ)
+);
+
