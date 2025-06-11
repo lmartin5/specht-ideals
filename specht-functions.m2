@@ -119,9 +119,9 @@ isSpechtMonomial(Partition) := (p) -> (
     isMember((x_0)^3, M)
 );
 
-QuotientSpechtIdeal = method();
+ColonSpechtIdeal = method();
 -- retuns the ideal <I(lambda) : x_1^i, x_1> associated with partition p in R[X_n]
-QuotientSpechtIdeal(Partition, ZZ, Ring) := (p, i, R) -> (
+ColonSpechtIdeal(Partition, ZZ, Ring) := (p, i, R) -> (
     n := sum(p);
     S := R[x_0..x_(n-1), MonomialOrder=>Lex];
     parts := dominatedPartitions(p);
@@ -135,14 +135,32 @@ QuotientSpechtIdeal(Partition, ZZ, Ring) := (p, i, R) -> (
     J + ideal{x_0}
 );
 -- retuns the specht ideal associated with partition p in Q[X_n]
-QuotientSpechtIdeal(Partition, ZZ) := (p, i) -> (
+ColonSpechtIdeal(Partition, ZZ) := (p, i) -> (
     QuotientSpechtIdeal(p, i, QQ)
 );
 -- with list rather than partition
-QuotientSpechtIdeal(List, ZZ, Ring) := (l, i, R) -> (
+ColonSpechtIdeal(List, ZZ, Ring) := (l, i, R) -> (
     QuotientSpechtIdeal(new Partition from l, i, R)
 );
-QuotientSpechtIdeal(List, ZZ) := (l, i) -> (
+ColonSpechtIdeal(List, ZZ) := (l, i) -> (
     QuotientSpechtIdeal(new Partition from l, i, QQ)
 );
 
+GeneralSpechtIdeal = method();
+-- retuns the specht ideal associated with partitions in l in R[X_n]
+GeneralSpechtIdeal(List, Ring) := (l, R) -> (
+    if instance(l#0, List) then (
+       l = for p in l list new Partition from p;
+    );
+    n := sum(l#0);
+    S := R[x_0..x_(n-1)];
+    polys := {};
+    for p in l do (
+        polys = join(polys, values(spechtPolynomials(p, S)));
+    );
+    ideal polys
+);
+-- retuns the specht ideal associated with partitions in l in Q[X_n]
+GeneralSpechtIdeal(List) := (l) -> (
+    GeneralSpechtIdeal(l, QQ)
+);
