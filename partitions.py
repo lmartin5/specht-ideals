@@ -1,7 +1,9 @@
 # run file on https://trinket.io/embed/python3
-
 import networkx as nx
 import matplotlib.pyplot as plt
+import sympy as sym
+import math as math
+t = sym.symbols('t')
     
 class Partition:
     def __init__(self, parts):
@@ -36,13 +38,13 @@ class Partition:
         return Partition(new_parts)
         
     def dominates(self, other):
-        max_len = max(len(self.parts), len(other.parts))
+        min_len = min(len(self.parts), len(other.parts))
         s_sum = 0
         o_sum = 0
-        for i in range(max_len):
-            s_sum += self.parts[i] if i < len(self.parts) else 0
-            o_sum += other.parts[i] if i < len(other.parts) else 0
-            if s_sum < o_sum:
+        for i in range(min_len):
+            s_sum += self.parts[i]
+            o_sum += other.parts[i]
+            if o_sum < s_sum:
                 return False
         return True
         
@@ -123,6 +125,14 @@ class PartitionSet:
             return True
         else:
             return False
+            
+    def remove_partition(self, p):
+        p1 = self.get_partition(p)
+        if not p1:
+            return False
+        else:
+            self.partitions.remove(p1)
+            return True
 
     def __repr__(self):
         return f"Set of {len(self.partitions)} partitions of {self.n}"
@@ -211,22 +221,79 @@ class LowerOrderIdeal(PartitionSet):
     def __init__(self, n, generators=[]):
           super().__init__(n)
           self.generators = []
-          self.partitions = [][Partition([1] * (self.n - 1))]
+          self.partitions = [Partition([1] * (self.n))]
           for g in generators:
             self.add_partition_to_ideal(g)
     
     # add partition and all lower partitions
-    # change to use for loops instead of recursion
     def add_partition_to_ideal(self, p):
         success = self.add_partition(p)
         if success:
-            covered_partitions = p.covers
+            self.generators.append(p)
+            # remove unnecessary generators
+            unnec_gens = []
+            for g in self.generators:
+                if g < p:
+                    unnec_gens.append(g)
+            for g in unnec_gens:
+                self.generators.remove(g)
+            
+            covered_partitions = p.covers.copy()
             if len(covered_partitions) == 0:
                 covered_partitions = p.find_covered_partitions()
-            for covered_partition in covered_partitions:
-                self.add_partition_to_ideal(covered_partition)
+            partitions_to_add = covered_partitions
         else:
             return False
+        
+        while len(partitions_to_add) > 0:
+            p_to_add = partitions_to_add[0]
+            success = self.add_partition(p_to_add)
+            if success:
+                covered_partitions = p_to_add.covers.copy()
+                if len(covered_partitions) == 0:
+                    covered_partitions = p_to_add.find_covered_partitions()
+                partitions_to_add.extend(covered_partitions)
+            partitions_to_add.pop(0)
+        return True
+        
+    def hilbert_series(self):
+        return sym.simplify(self.hilbert_recursion())
+        
+    def hilbert_recursion(self):
+        # base cases
+        if self.n == 1 or (len(self.generators) == 1 and self.generators[0] == Partition([self.n])):
+            return 0
+            
+        if len(self.generators) == 0 or (len(self.generators) == 1 and self.generators[0] == Partition([1] * self.n)):
+            return (1 - t**(math.comb(self.n, 2))) / (1 - t)**self.n
+            
+        if len(self.generators) == 1 and self.generators[0] == Partition([self.n - 1] + [1]):
+            return 1 / (1 - t)
+            
+        if len(self.generators) == 1 and self.generators[0].len() == 2:
+            n = self.n
+            m = self.generators[0].parts[1]
+            numer = 1
+            for i in range(1, m):
+                numer += math.comb(n - m + i - 1, i) * t**i
+            numer += math.comb(n - 1, m - 2) * t**m
+            return numer / (1 - t)**m
+            
+        if len(self.generators) == 1 and self.generators[0].len() == 3 and self.generators[0].parts[0] == self.generators[0].parts[1] and self.generators[0].parts[2] == 1:
+            n = self.n
+            m = self.generators[0].parts[0]
+            numer = 1
+            for i in range(1, m + 2):
+                numer += math.comb(m + i - 1, i) * t**i
+            return numer / (1 - t)**m
+        
+        # recursion
+        hs = 0
+        max_len = max([g.len() for g in self.generators])
+        for i in range(max_len - 1):
+            hs += t**(i) * self.create_ideal_for_smaller_n(i + 1).hilbert_recursion()
+        hs += (t**(max_len - 1) / (1 - t)) * self.create_ideal_for_smaller_n(max_len).hilbert_recursion()
+        return hs
         
     def create_ideal_for_smaller_n(self, k):
         P = Partitions(self.n - 1)
@@ -236,15 +303,9 @@ class LowerOrderIdeal(PartitionSet):
             for g in self.generators:
                 if p.add_to_part(k) <= g:
                     I.add_partition_to_ideal(p)
-                    
-        for g in I.partitions:
-            max_element = True
-            for p in I.partitions:
-                if p > g:
-                    max_element = False
                     break
-            if max_element:
-                I.generators
+        
+        return I
         
     def __repr__(self):
         return f"Lower order ideal of {len(self.partitions)} partitions of {self.n}\nGenerated by {self.generators}"
