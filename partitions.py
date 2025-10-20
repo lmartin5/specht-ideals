@@ -6,21 +6,23 @@ import math as math
 t = sym.symbols('t')
     
 class Partition:
+    # parts should be a list of positive numbers, i.e. [3, 2, 2, 1]
     def __init__(self, parts):
         self.n = sum(parts)
         self.parts = parts
         self.parts.sort(reverse=True)
         self.tparts = tuple(parts)
-        self.covers = [] # partitions that this one covers
+        self.covers = [] # partitions that self covers
         self.covered_by = [] # partitions that cover self
-        self.poset_rank = 0
+        self.poset_rank = 0 # keeps track of where partition should be placed in Hasse diagram
         
     def len(self):
         return len(self.parts)
     
     def sum(self):
         return sum(self.parts)
-        
+    
+    # if self = [4, 2, 2, 2], corner_set returns [[1, 4], [4, 2]]
     def corner_set(self):
         cs = []
         for i in range(self.len() - 1):
@@ -28,7 +30,8 @@ class Partition:
                 cs.append([i + 1, self.parts[i]])
         cs.append([self.len(), self.parts[-1]])
         return cs
-        
+    
+    # creates a new partition where k-th part is increased by 1
     def add_to_part(self, k):
         new_parts = self.parts.copy()
         if k >= self.len() + 1:
@@ -47,6 +50,24 @@ class Partition:
             if o_sum < s_sum:
                 return False
         return True
+    
+    def meet(self, other):
+        max_len = max(len(self.parts), len(other.parts))
+        s_sum = 0
+        o_sum = 0
+        meet_parts = []
+        m_sum = 0
+        for i in range(max_len + 1):
+            s_sum += 0 if i >= len(self.parts) else self.parts[i]
+            o_sum += 0 if i >= len(other.parts) else other.parts[i]
+            m_part = min(s_sum, o_sum) - m_sum
+            m_sum += m_part
+
+            if m_part == 0:
+                return Partition(meet_parts)
+            else:
+                meet_parts.append(m_part)
+
         
     def find_covered_partitions(self):
         p = self
@@ -218,6 +239,7 @@ class Partitions(PartitionSet):
 ### ------------------------------------------------------------------------ ###
 
 class LowerOrderIdeal(PartitionSet):
+    # g should be a list of partitions of n
     def __init__(self, n, generators=[]):
           super().__init__(n)
           self.generators = []
@@ -294,8 +316,9 @@ class LowerOrderIdeal(PartitionSet):
             hs += t**(i) * self.create_ideal_for_smaller_n(i + 1).hilbert_recursion()
         hs += (t**(max_len - 1) / (1 - t)) * self.create_ideal_for_smaller_n(max_len).hilbert_recursion()
         return hs
-        
-    def create_ideal_for_smaller_n(self, k):
+    
+    # returns the lower order ideal of P_{n - 1} of all partitions that are in I after adding 1 to the k-th part
+    def smaller_ideal(self, k):
         P = Partitions(self.n - 1)
         I = LowerOrderIdeal(self.n - 1)
         
