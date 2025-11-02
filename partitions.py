@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import sympy as sym
 import math as math
 t = sym.symbols('t')
+from functools import lru_cache
     
 class Partition:
     # parts should be a list of positive numbers, i.e. [3, 2, 2, 1]
@@ -39,6 +40,17 @@ class Partition:
         else:
             new_parts[k - 1] += 1
         return Partition(new_parts)
+    
+    def remove_from_part(self, k):
+        new_parts = self.parts.copy()
+        if k > self.len():
+            k = self.len()
+
+        if new_parts[k - 1] == 1:
+            new_parts.remove(1)
+        else:
+            new_parts[k - 1] += -1
+        return Partition(new_parts)      
         
     def dominates(self, other):
         min_len = min(len(self.parts), len(other.parts))
@@ -98,6 +110,48 @@ class Partition:
                         covered_partitions.append(Partition(new_parts))
                         break
         return covered_partitions
+    
+    def hilbert_series(self):
+        return sym.simplify(self.hilbert_recursion())
+    
+    def hilbert_recursion(self):
+        print(self)
+        # base cases
+        if self.parts[0] == 1:
+            return (1 - t**(math.comb(self.n, 2))) / (1 - t)**self.n
+        if self.len() == 1:
+            return 0
+
+        # recursion
+        hs = 0
+        for i in range(self.len() - 1):
+            hs += t**(i) * self.get_Li_hilbert_series(i + 1)
+        hs += (t**(self.len() - 1) / (1 - t)) * self.get_Li_hilbert_series(self.len())
+        return hs
+    
+    def get_Li_hilbert_series(self, i):
+        part = self.parts[i - 1]
+        corner_rows = [x[0] for x in self.corner_set()]
+        m = max((x for x in corner_rows if x <= i), default=0)
+
+        if part == 1:
+            p1 = self.remove_from_part(m)
+            return p1.hilbert_recursion()
+
+        gamma_parts = self.parts[0: i]
+        gamma_parts += ([part - 1] * ((self.sum() - sum(gamma_parts)) // (part - 1)))
+        if (self.sum() - sum(gamma_parts)) % (part - 1) != 0:
+            gamma_parts.append((self.sum() - sum(gamma_parts)) % (part - 1))
+
+        mt = Partition(gamma_parts).meet(self)
+        p2 = mt.remove_from_part(i)
+
+        if m == 0:
+            return p2.hilbert_recursion()
+        
+        p1 = self.remove_from_part(m)
+        return (p1.hilbert_recursion() + p2.hilbert_recursion() - p1.meet(p2).hilbert_recursion())
+
         
     def __hash__(self):
         return hash(self.tparts) # allows for use in sets and dicts

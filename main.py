@@ -34,34 +34,36 @@ def __main__():
     # print("**********************")
     # partitions_and_ideals_example()
     
-    while True:
-        p = get_random_partition(15)
-        r_row = random.randrange(0, p.len())
-        r_part = p.parts[r_row]
+    # while True:
+    #     p = get_random_partition(15)
+    #     r_row = random.randrange(0, p.len())
+    #     r_part = p.parts[r_row]
 
-        corner_rows = [x[0] for x in p.corner_set()]
-        m = max((x for x in corner_rows if x <= r_row + 1), default=0)
+    #     corner_rows = [x[0] for x in p.corner_set()]
+    #     m = max((x for x in corner_rows if x <= r_row + 1), default=0)
 
-        if r_part == 1 or m == 0 or m == r_row + 1:
-            continue
-        else:
-            break
+    #     if r_part == 1 or m == 0 or m == r_row + 1:
+    #         continue
+    #     else:
+    #         break
 
-    print("p:", p)
-    print("Row:", r_row + 1)
-    print("C_t:", m)
-    p_1 = Partition([x - 1 if idx == m - 1 else x for idx, x in enumerate(p.parts)])
-    gamma_parts = p.parts[0: r_row + 1]
-    gamma_parts += ([r_part - 1] * ((p.sum() - sum(gamma_parts)) // (r_part - 1)))
-    if (p.sum() - sum(gamma_parts)) % (r_part - 1) != 0:
-        gamma_parts.append((p.sum() - sum(gamma_parts)) % (r_part - 1))
+    # print("p:", p)
+    # print("Row:", r_row + 1)
+    # print("C_t:", m)
+    # p_1 = Partition([x - 1 if idx == m - 1 else x for idx, x in enumerate(p.parts)])
+    # gamma_parts = p.parts[0: r_row + 1]
+    # gamma_parts += ([r_part - 1] * ((p.sum() - sum(gamma_parts)) // (r_part - 1)))
+    # if (p.sum() - sum(gamma_parts)) % (r_part - 1) != 0:
+    #     gamma_parts.append((p.sum() - sum(gamma_parts)) % (r_part - 1))
 
-    mt = Partition(gamma_parts).meet(p)
-    p_2 = Partition([x - 1 if idx == r_row else x for idx, x in enumerate(mt.parts)])
+    # mt = Partition(gamma_parts).meet(p)
+    # p_2 = Partition([x - 1 if idx == r_row else x for idx, x in enumerate(mt.parts)])
 
-    print("p1:", p_1)
-    print("p2:", p_2)
-    print("meet:", p_1.meet(p_2))
+    # print("p1:", p_1)
+    # print("p2:", p_2)
+    # print("meet:", p_1.meet(p_2))
 
+    p = Partition([5, 2])
+    print(p.hilbert_series())
 
 __main__()
