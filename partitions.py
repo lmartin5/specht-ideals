@@ -111,11 +111,57 @@ class Partition:
                         break
         return covered_partitions
     
+    def hilbert_series_ii(self):
+        def hilbert_series_finder(p, series):
+            if p.parts[0] == 1:
+                return (1 - t**(math.comb(p.n, 2))) / (1 - t)**p.n
+            if p.len() == 1:
+                return 0
+            
+            # recursion
+            hs = 0
+            for i in range(p.len() - 1):
+                hs += t**(i) * Li_hilbert_series_finder(p, i + 1, series)
+            hs += (t**(p.len() - 1) / (1 - t)) * Li_hilbert_series_finder(p, p.len(), series)
+            return hs
+
+        def Li_hilbert_series_finder(p, j, series):
+            part = p.parts[j - 1]
+            corner_rows = [x[0] for x in p.corner_set()]
+            m = max((x for x in corner_rows if x <= j), default=0)
+
+            if part == 1:
+                p1 = p.remove_from_part(m)
+                return series[p1.tparts]
+
+            gamma_parts = p.parts[0: j]
+            gamma_parts += ([part - 1] * ((p.sum() - sum(gamma_parts)) // (part - 1)))
+            if (p.sum() - sum(gamma_parts)) % (part - 1) != 0:
+                gamma_parts.append((p.sum() - sum(gamma_parts)) % (part - 1))
+
+            mt = Partition(gamma_parts).meet(p)
+            p2 = mt.remove_from_part(j)
+
+            if m == 0:
+                return series[p2.tparts]
+            
+            p1 = p.remove_from_part(m)
+            return (series[p1.tparts] + series[p2.tparts] - series[p1.meet(p2).tparts])
+
+        series = {}
+
+        for i in range(2, self.n):
+            print(i)
+            P = Partitions(i)
+            for p in P.partitions:
+                series[p.tparts] = hilbert_series_finder(p, series)
+        
+        return hilbert_series_finder(self, series)
+    
     def hilbert_series(self):
         return sym.simplify(self.hilbert_recursion())
     
     def hilbert_recursion(self):
-        print(self)
         # base cases
         if self.parts[0] == 1:
             return (1 - t**(math.comb(self.n, 2))) / (1 - t)**self.n
