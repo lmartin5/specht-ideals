@@ -63,7 +63,7 @@ def __main__():
     # print("p2:", p_2)
     # print("meet:", p_1.meet(p_2))
 
-    p = Partition([7, 1, 1])
+    p = Partition([9, 5, 5, 2])
     #P = Partitions(4)
     #for p in P.partitions:
     #    print(p.tparts, ":", sym.simplify(p.hilbert_series_ii()))

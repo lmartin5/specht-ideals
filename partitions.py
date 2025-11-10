@@ -2,10 +2,45 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 import sympy as sym
+from sympy import symbols, Poly
 import math as math
-t = sym.symbols('t')
-from functools import lru_cache
-    
+
+t = symbols('t')
+ONE_MINUS_T = Poly(1 - t, t, domain='ZZ')
+
+def add_rational_forms(pair1, pair2):
+    """
+    pair = (h_expr_or_poly, d) where h has integer coeffs and d is a nonnegative int.
+    Returns (num_poly, D) for num_poly / (1 - t)^D in lowest possible power.
+    """
+    return add_many_rational_forms([pair1, pair2])
+
+def add_many_rational_forms(terms):
+    """
+    terms: list of (h_expr_or_poly, d), with integer-coefficient h's.
+    Returns (num_poly, D) with num_poly in ZZ[t] and minimal D after canceling (1 - t)^k.
+    """
+    # Normalize inputs
+    polys = [Poly(h, t, domain='ZZ') for (h, _) in terms]
+    ds    = [int(d) for (_, d) in terms]
+    D = max(ds) if ds else 0
+
+    # Accumulate numerator over common denominator (1 - t)^D
+    num = Poly(0, t, domain='ZZ')
+    for h, d in zip(polys, ds):
+        k = D - d
+        num += h if k == 0 else h * (ONE_MINUS_T ** k)
+
+    # Cancel common powers of (1 - t)
+    # Equivalent test: num(1) == 0  <=> divisible by (t - 1) <=> divisible by (1 - t)
+    # Repeat until it no longer divides or we've exhausted the denominator.
+    while D > 0 and num.eval(1) == 0:
+        # exact quotient (no remainder) division by (1 - t)
+        num = num.exquo(ONE_MINUS_T)
+        D -= 1
+
+    return num, D
+
 class Partition:
     # parts should be a list of positive numbers, i.e. [3, 2, 2, 1]
     def __init__(self, parts):
@@ -114,16 +149,19 @@ class Partition:
     def hilbert_series_ii(self):
         def hilbert_series_finder(p, series):
             if p.parts[0] == 1:
-                return (1 - t**(math.comb(p.n, 2))) / (1 - t)**p.n
+                return (1 - t**(math.comb(p.n, 2))), p.n
             if p.len() == 1:
-                return 0
+                return 0, 0
             
             # recursion
-            hs = 0
+            new_terms = []
             for i in range(p.len() - 1):
-                hs += t**(i) * Li_hilbert_series_finder(p, i + 1, series)
-            hs += (t**(p.len() - 1) / (1 - t)) * Li_hilbert_series_finder(p, p.len(), series)
-            return hs
+                Li_HS = Li_hilbert_series_finder(p, i + 1, series)
+                new_terms.append((t**(i) * Li_HS[0], Li_HS[1]))
+            Li_HS = Li_hilbert_series_finder(p, p.len(), series)
+            new_terms.append((t**(p.len() - 1) * Li_HS[0], Li_HS[1] + 1))
+
+            return add_many_rational_forms(new_terms)
 
         def Li_hilbert_series_finder(p, j, series):
             part = p.parts[j - 1]
@@ -146,7 +184,7 @@ class Partition:
                 return series[p2.tparts]
             
             p1 = p.remove_from_part(m)
-            return (series[p1.tparts] + series[p2.tparts] - series[p1.meet(p2).tparts])
+            return add_many_rational_forms([series[p1.tparts], series[p2.tparts], (-1*series[p1.meet(p2).tparts][0], series[p1.meet(p2).tparts][1])])
 
         series = {}
 
