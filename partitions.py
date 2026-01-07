@@ -189,7 +189,6 @@ class Partition:
         series = {}
 
         for i in range(2, self.n):
-            print(i)
             P = Partitions(i)
             for p in P.partitions:
                 series[p.tparts] = hilbert_series_finder(p, series)
@@ -451,8 +450,8 @@ class LowerOrderIdeal(PartitionSet):
         hs = 0
         max_len = max([g.len() for g in self.generators])
         for i in range(max_len - 1):
-            hs += t**(i) * self.create_ideal_for_smaller_n(i + 1).hilbert_recursion()
-        hs += (t**(max_len - 1) / (1 - t)) * self.create_ideal_for_smaller_n(max_len).hilbert_recursion()
+            hs += t**(i) * self.smaller_ideal(i + 1).hilbert_recursion()
+        hs += (t**(max_len - 1) / (1 - t)) * self.smaller_ideal(max_len).hilbert_recursion()
         return hs
     
     # returns the lower order ideal of P_{n - 1} of all partitions that are in I after adding 1 to the k-th part

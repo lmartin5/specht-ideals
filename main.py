@@ -15,10 +15,11 @@ def partitions_and_ideals_example():
     print(P)
     # P.show_hasse_diagram()
     print(len(P.partitions))
-    I = LowerOrderIdeal(9, [Partition([3, 3, 3])])
+    I = LowerOrderIdeal(9, [Partition([3, 3, 3]), Partition([4, 2, 1, 1, 1])])
     print(I)
     print(I.smaller_ideal(3))
     print(I.smaller_ideal(2))
+    print(I.hilbert_series())
 
 def get_random_partition(n):
     size = 0
@@ -26,7 +27,40 @@ def get_random_partition(n):
     while size < n:
         parts.append(random.randint(1, n - size))
         size += parts[-1]
-    return Partition(parts)        
+    return Partition(parts)
+
+def add_rational_forms(pair1, pair2):
+    """
+    pair = (h_expr_or_poly, d) where h has integer coeffs and d is a nonnegative int.
+    Returns (num_poly, D) for num_poly / (1 - t)^D in lowest possible power.
+    """
+    return add_many_rational_forms([pair1, pair2])
+
+def add_many_rational_forms(terms):
+    """
+    terms: list of (h_expr_or_poly, d), with integer-coefficient h's.
+    Returns (num_poly, D) with num_poly in ZZ[t] and minimal D after canceling (1 - t)^k.
+    """
+    # Normalize inputs
+    polys = [Poly(h, t, domain='ZZ') for (h, _) in terms]
+    ds    = [int(d) for (_, d) in terms]
+    D = max(ds) if ds else 0
+
+    # Accumulate numerator over common denominator (1 - t)^D
+    num = Poly(0, t, domain='ZZ')
+    for h, d in zip(polys, ds):
+        k = D - d
+        num += h if k == 0 else h * (ONE_MINUS_T ** k)
+
+    # Cancel common powers of (1 - t)
+    # Equivalent test: num(1) == 0  <=> divisible by (t - 1) <=> divisible by (1 - t)
+    # Repeat until it no longer divides or we've exhausted the denominator.
+    while D > 0 and num.eval(1) == 0:
+        # exact quotient (no remainder) division by (1 - t)
+        num = num.exquo(ONE_MINUS_T)
+        D -= 1
+
+    return num, D     
 
 def __main__():
     # example of using partitions
@@ -63,11 +97,19 @@ def __main__():
     # print("p2:", p_2)
     # print("meet:", p_1.meet(p_2))
 
-    p = Partition([9, 5, 5, 2])
-    #P = Partitions(4)
-    #for p in P.partitions:
-    #    print(p.tparts, ":", sym.simplify(p.hilbert_series_ii()))
-    # print("First:", p.hilbert_series())
-    print(sym.simplify(p.hilbert_series_ii()))
+    # p = Partition([5, 5, 1, 1, 1])
+    # p1 = Partition([5, 4, 2, 1, 1])
+    # # P = Partitions(7)
+    # # for p in P.partitions:
+    # p_ser = p.hilbert_series_ii()
+    # p1_ser = p1.hilbert_series_ii()
+
+    # print(add_rational_forms((-1*p_ser[0], p_ser[1]), p1_ser))
+
+    for k in range(5):
+        p = Partition([1 + k, 1, 1, 1, 1, 1, 1, 1])
+        print(p.hilbert_series_ii())
+
+    partitions_and_ideals_example()
 
 __main__()
