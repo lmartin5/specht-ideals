@@ -1,6 +1,8 @@
 from partitions import *
 import random
 
+# run file on https://trinket.io/embed/python3
+
 def partition_example():
     p1 = Partition([4, 2, 2, 2])
     p2 = Partition([5, 2, 1, 1, 1])
@@ -106,10 +108,11 @@ def __main__():
 
     # print(add_rational_forms((-1*p_ser[0], p_ser[1]), p1_ser))
 
+    P = Partitions(7)
+    P.show_hasse_diagram()
+
     for k in range(5):
         p = Partition([1 + k, 1, 1, 1, 1, 1, 1, 1])
         print(p.hilbert_series_ii())
-
-    partitions_and_ideals_example()
 
 __main__()
