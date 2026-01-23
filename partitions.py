@@ -78,6 +78,12 @@ class Partition:
                 return Partition(meet_parts)
             else:
                 meet_parts.append(m_part)
+
+    def less_than_ideal(self):
+        return LowerOrderIdeal(self.n, [self])
+    
+    def strictly_less_than_ideal(self):
+        return LowerOrderIdeal(self.n, self.find_covered_partitions())
         
     def find_covered_partitions(self):
         p = self

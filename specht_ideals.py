@@ -82,5 +82,11 @@ def lower_ideal_generators(mu: Partition, i):
     p2 = mu_meet_gamma.remove_from_part(i)
     return [p1, p2, p1.meet(p2)]
 
-L = LowerOrderIdeal(10, [Partition([3, 3, 3, 1]), Partition([4, 2, 2, 2]), Partition([4, 3, 1, 1, 1])])
-print(ideal_specht_hilbert_series(L))
+# hilbert series of I_mu / I_(<mu), the module discussed in the Haiman-Woo manuscript
+def haiman_woo_hilbert_series(mu: Partition):    
+    I = mu.strictly_less_than_ideal()
+    return ideal_specht_hilbert_series(I) - specht_hilbert_series(mu)
+
+for k in range(5):
+    p = Partition([3 + k, 3, 3, 1])
+    print(p, haiman_woo_hilbert_series(p))
