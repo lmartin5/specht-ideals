@@ -11,92 +11,124 @@ import matplotlib.pyplot as plt
 class Partition:
     # parts should be a list of positive numbers, i.e. [3, 2, 2, 1]
     def __init__(self, parts):
-        self.n = sum(parts)
-        self.parts = parts
+        self.parts = list(parts)
         self.parts.sort(reverse=True)
         self.parts = [part for part in self.parts if part > 0]
-        self.tparts = tuple(parts)
-        
-    def len(self):
+        self.tparts = tuple(self.parts)
+
+    def __len__(self):
         return len(self.parts)
     
-    def sum(self):
-        return sum(self.parts)
+    def __iter__(self):
+        return iter(self.parts)
+
+    # allows for accessing parts in an easier manner, i.e. p[1] will give first part of p
+    # WARNING: p[len(p) + 1] will return 0, not an error
+    def __getitem__(self, k):
+        if isinstance(k, int):
+            if k < 1:
+                raise IndexError("Partition index out of range")
+            if k > len(self):
+                return 0
+            else:
+                return self.parts[k - 1]
+        else:
+            raise TypeError("Partition indices must be integers")
     
-    # if self = [4, 2, 2, 2], corner_set returns [[1, 4], [4, 2]]
-    def corner_set(self):
-        cs = []
-        for i in range(self.len() - 1):
-            if self.parts[i + 1] < self.parts[i]:
-                cs.append([i + 1, self.parts[i]])
-        cs.append([self.len(), self.parts[-1]])
-        return cs
-    
+    # this creates a copy of the partition with part updated (done to prevent breaking hashing behavior)
+    def update_part(self, k, value):
+        if k < 1:
+            raise IndexError("Partition index out of range")
+        if value < 0:
+            raise ValueError("Partition parts must be non-negative")
+
+        new_partition = self.copy()
+
+        # deals with case when part is 0
+        if value == 0:
+            if self[k] == 0:
+                return new_partition
+            elif k == 1 and self == Partition([1]):
+                raise ValueError("Empty partition is not allowed")
+            else:
+                del new_partition.parts[k - 1]
+                new_partition.parts.sort(reverse=True)
+                new_partition.tparts = tuple(new_partition.parts)
+                return new_partition
+
+        if k > len(self):
+            new_partition.parts.append(value)
+        else:
+            new_partition.parts[k - 1] = value
+        new_partition.parts.sort(reverse=True)
+        new_partition.tparts = tuple(new_partition.parts)
+        return new_partition
+
+    def copy(self):
+        return Partition(self.parts.copy())
+
     # creates a new partition where k-th part is increased by 1
     def add_to_part(self, k):
-        new_parts = self.parts.copy()
-        if k >= self.len() + 1:
-            new_parts.append(1)
-        else:
-            new_parts[k - 1] += 1
-        return Partition(new_parts)
+        return self.update_part(k, self[k] + 1)
     
+    # creates a new partition where k-th part is decreased by 1
     def remove_from_part(self, k):
-        new_parts = self.parts.copy()
-        if k > self.len():
-            k = self.len()
-
-        if new_parts[k - 1] == 1:
-            new_parts.remove(1)
-        else:
-            new_parts[k - 1] += -1
-        return Partition(new_parts)
+        if k > len(self):
+            raise ValueError("Cannot remove from a zero part")
+        return self.update_part(k, self[k] - 1)
+    
+    # returns the list of rows that have a corner
+    # if self = [4, 2, 2, 2], corner_set returns [1, 4]
+    def corner_set(self):
+        cs = []
+        for i in range(1, len(self) + 1):
+            if self[i] > self[i + 1]:
+                cs.append(i)
+        return cs
 
     def compress(self, k):
-        if k > self.len():
-            k = self.len()
-        new_parts = self.parts.copy()
-
-        m = max(indx for indx, part in enumerate(self.parts) if part == self.parts[k-1]) + 1
+        if k > len(self) or k < 1:
+            raise ValueError("Can only compress on non-zero row")
+        if self[k] < 2:
+            raise ValueError("Cannot compress on part of size 1")
+            
+        compressed_partition = self.copy()
+        m = max(i for i in range(1, len(self) + 1) if self[i] == self[k])
         blocks_to_move = m - k
 
-        for i in range(k, m):
-            print(i, new_parts[i])
-            new_parts[i] -= 1
+        # we have to update the k + 1 part every time because this is where the part with size self[k] will be after reordering
+        for i in range(k + 1, m + 1):
+            compressed_partition = compressed_partition.update_part(k + 1, self[k] - 1)
 
-        print(new_parts)
-
-        print(blocks_to_move)
-        update_index = m
+        i = m + 1
         while blocks_to_move > 0:
-            old_part = self.parts[update_index] if 0 <= update_index < len(self.parts) else 0
-            new_parts[update_index - 1] = min(self.parts[k-1] - 1, old_part + blocks_to_move)
-            blocks_to_move -= max(0, self.parts[k-1] - 1 - old_part)
-            print(update_index, old_part, new_parts[update_index], blocks_to_move)
-            update_index += 1
+            compressed_partition = compressed_partition.update_part(i, min(self[k] - 1, self[i] + blocks_to_move))
+            blocks_to_move -= self[k] - 1 - self[i]
+            i += 1
 
-        return Partition(new_parts)
+        return compressed_partition
         
     def dominates(self, other):
-        min_len = min(len(self.parts), len(other.parts))
         s_sum = 0
         o_sum = 0
-        for i in range(min_len):
-            s_sum += self.parts[i]
-            o_sum += other.parts[i]
+        index = 1
+        while self[index] > 0 or other[index] > 0:
+            s_sum += self[index]
+            o_sum += other[index]
+            index += 1
             if o_sum < s_sum:
                 return False
         return True
     
     def meet(self, other):
-        max_len = max(len(self.parts), len(other.parts))
+        max_len = max(len(self), len(other))
         s_sum = 0
         o_sum = 0
         meet_parts = []
         m_sum = 0
-        for i in range(max_len + 1):
-            s_sum += 0 if i >= len(self.parts) else self.parts[i]
-            o_sum += 0 if i >= len(other.parts) else other.parts[i]
+        for i in range(1, max_len + 1):
+            s_sum += self[i]
+            o_sum += other[i]
             m_part = min(s_sum, o_sum) - m_sum
             m_sum += m_part
 
@@ -106,43 +138,70 @@ class Partition:
                 meet_parts.append(m_part)
 
     def less_than_ideal(self):
-        return LowerOrderIdeal(self.n, [self])
+        return LowerOrderIdeal(sum(self), [self])
     
     def strictly_less_than_ideal(self):
-        return LowerOrderIdeal(self.n, self.find_covered_partitions())
+        return LowerOrderIdeal(sum(self), self.get_covered_partitions())
         
-    def find_covered_partitions(self):
-        p = self
+    def get_covered_partitions(self):
         covered_partitions = []
-        for i, j in p.corner_set():
-            if i == p.len():
+        for i in self.corner_set():
+            j = self[i]
+            if i == len(self):
                 if j > 1:
-                    new_parts = p.parts.copy()
-                    new_parts[-1] += -1
-                    new_parts.append(1)
-                    covered_partitions.append(Partition(new_parts))
-            elif p.parts[i] < j - 1:
-                new_parts = p.parts.copy()
-                new_parts[i - 1] += -1
-                new_parts[i] += 1
-                covered_partitions.append(Partition(new_parts))
+                    new_partition = self.update_part(i, j - 1)
+                    new_partition = new_partition.update_part(i + 1, 1)
+                    covered_partitions.append(new_partition)
+            elif self[i + 1] < j - 1:
+                new_partition = self.update_part(i, j - 1)
+                new_partition = new_partition.update_part(i + 1, self[i + 1] + 1)
+                covered_partitions.append(new_partition)
             elif j == 2:
-                new_parts = p.parts.copy()
-                new_parts[i - 1] += -1
-                new_parts.append(1)
-                covered_partitions.append(Partition(new_parts))
+                new_partition = self.update_part(i, j - 1)
+                new_partition = new_partition.update_part(len(new_partition) + 1, 1)
+                covered_partitions.append(new_partition)
             else:
-                for k in range(i, p.len()):
-                    if p.parts[k] == j - 2:
-                        new_parts = p.parts.copy()
-                        new_parts[i - 1] += -1
-                        new_parts[k] += 1
-                        covered_partitions.append(Partition(new_parts))
+                for k in range(i, len(self) + 1):
+                    if self[k] == j - 2:
+                        new_partition = self.update_part(i, j - 1)
+                        new_partition = new_partition.update_part(k, self[k] + 1)
+                        covered_partitions.append(new_partition)
                         break
         return covered_partitions
+    
+    def get_chipping_sequences(self):
+        if self[1] == 1:
+            return [[self]]
+        
+        sequences = []
+        for i in self.corner_set():
+            new_sequences = self.remove_from_part(i).get_chipping_sequences()
+            for seq in new_sequences:
+                sequences.append([self] + seq)
+        
+        first_corner = min(self.corner_set())
+        for i in range(1, len(self) + 1):
+            if self[i] == 1:
+                break
+            if i in self.corner_set():
+                continue
 
+            ith_compression = self.compress(i)
+            new_sequences = ith_compression.remove_from_part(i).get_chipping_sequences()
+            for seq in new_sequences:
+                sequences.append([self] + seq)
+
+            if i >= first_corner:
+                ci = max(j for j in self.corner_set() if j <= i)
+                new_sequences = ith_compression.remove_from_part(ci).get_chipping_sequences()
+                for seq in new_sequences:
+                    sequences.append([self] + seq)
+
+        return sequences
+
+    # allows for use of Partitions in sets and dicts
     def __hash__(self):
-        return hash(self.tparts) # allows for use in sets and dicts
+        return hash(self.tparts)
         
     def __eq__(self, other):
         if not isinstance(other, Partition):
@@ -165,7 +224,7 @@ class Partition:
         return self >= other and self != other
 
     def __repr__(self):
-        return f"Partition({self.parts})"
+        return f"{self.tparts}"
     
 ### ------------------------------------------------------------------------ ###
 
@@ -174,11 +233,17 @@ class PartitionSet:
         if partitions is None:
             partitions = []
         self.partitions = partitions
+
+    def __len__(self):
+        return len(self.partitions)
+    
+    def __iter__(self):
+        return iter(self.partitions)
         
     def get_partition(self, p):
         if not isinstance(p, Partition):
             p = Partition(p)
-        for p1 in self.partitions:
+        for p1 in self:
             if p1 == p:
                 return p1
         return False
@@ -199,13 +264,16 @@ class PartitionSet:
             return True
 
     def __repr__(self):
-        return f"Set of {len(self.partitions)} partitions: {self.partitions}"
+        return f"Set of {len(self)} partitions: {self.partitions}"
      
 ### ------------------------------------------------------------------------ ###
 
 class Partitions(PartitionSet):
     def __init__(self, n):
         super().__init__()
+        if n < 1:
+            raise ValueError("In PartitionSet, n must be a positive integer")
+        
         self.n = n
         self.covers = {} # dict holding covering relations
         self.covered_by = {} # dict holding covering relations
@@ -223,7 +291,7 @@ class Partitions(PartitionSet):
         
         while len(new_partitions) != 0:
             for p in new_partitions:
-                covered_partitions = p.find_covered_partitions()
+                covered_partitions = p.get_covered_partitions()
                 self.covers[p] = covered_partitions
                 for p1 in covered_partitions:
                     # add partition if not already added
@@ -284,16 +352,15 @@ class Partitions(PartitionSet):
 
 class LowerOrderIdeal(PartitionSet):
     # generators should be a list of partitions of n
-    # with current setup, the ideals are allowed to be empty
+    # with current setup, the ideals are allowed to be empty, when no generators are specified
     def __init__(self, n, generators=None):
         super().__init__()
+        if n < 1:
+            raise ValueError("In PartitionSet, n must be a positive integer")
+        
         self.n = n
         if generators is None:
             generators = []
-        
-        for g in generators:
-            if g.sum() != n:
-                raise ValueError("All generators of the ideal must be partitions of n = " + str(n))
 
         self.generators = []
         self.partitions = []
@@ -302,6 +369,9 @@ class LowerOrderIdeal(PartitionSet):
     
     # add partition and all lower partitions
     def add_partition_to_ideal(self, p):
+        if sum(p) != self.n:
+                raise ValueError("All partitions of the ideal must be partitions of n = " + str(self.n))
+        
         success = self.add_partition(p)
         if success:
             self.generators.append(p)
@@ -313,7 +383,7 @@ class LowerOrderIdeal(PartitionSet):
             for g in unnec_gens:
                 self.generators.remove(g)
 
-            partitions_to_add = p.find_covered_partitions()
+            partitions_to_add = p.get_covered_partitions()
         else:
             return False
         
@@ -321,7 +391,7 @@ class LowerOrderIdeal(PartitionSet):
             p_to_add = partitions_to_add[0]
             success = self.add_partition(p_to_add)
             if success:
-                covered_partitions = p_to_add.find_covered_partitions()
+                covered_partitions = p_to_add.get_covered_partitions()
                 partitions_to_add.extend(covered_partitions)
             partitions_to_add.pop(0)
         return True
@@ -343,8 +413,7 @@ class LowerOrderIdeal(PartitionSet):
     
 ### ------------------------------------------------------------------------ ###
 
-p = Partition([5, 4, 4, 4, 4, 2, 1])
-print(p.compress(2))
-#print(p.compress(3))
-#print(p.compress(5))
-#print(p.compress(7))
+p = Partition([8, 5, 1, 1])
+cs = p.get_chipping_sequences()
+for s in cs:
+    print(s)
