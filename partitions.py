@@ -168,7 +168,7 @@ class Partition:
                         covered_partitions.append(new_partition)
                         break
         return covered_partitions
-    
+
     def get_chipping_sequences(self):
         if self[1] == 1:
             return [[self]]
@@ -198,6 +198,18 @@ class Partition:
                     sequences.append([self] + seq)
 
         return sequences
+    
+    def get_sorted_chipping_sequences(self):
+        sequences = self.get_chipping_sequences()
+        sorted_sequences = {}
+        for seq in sequences:
+            end_partition = seq[-1]
+            if sum(end_partition) not in sorted_sequences:
+                sorted_sequences[sum(end_partition)] = [seq]
+            else:
+                sorted_sequences[sum(end_partition)].append(seq)
+
+        return sorted_sequences
 
     # allows for use of Partitions in sets and dicts
     def __hash__(self):
@@ -225,6 +237,43 @@ class Partition:
 
     def __repr__(self):
         return f"{self.tparts}"
+    
+    def get_young_diagram(self, ax, x_offset = 0, y_offset = 0):
+        for i in range(1, len(self) + 1):
+            for j in range(1, self[i] + 1):
+                ax.add_patch(plt.Rectangle((x_offset + j, -i - y_offset), 1, 1, fill=False))
+    
+    def show_young_diagram(self):
+        fig, ax = plt.subplots()
+        fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+        self.get_young_diagram(ax)
+        ax.set_aspect('equal')
+        ax.set_xlim(0, max(self))
+        ax.set_ylim(-len(self), 0)
+        ax.axis('off')
+        plt.show()
+
+    def show_chipping_sequences(self):
+        fig, ax = plt.subplots(figsize=(10, 10))
+        fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+
+        x_offset = 0
+        y_offset = 0
+        cs = self.get_sorted_chipping_sequences()
+
+        for i in sorted(list(cs.keys()), reverse=True):
+            for seq in cs[i]:
+                for p in seq:
+                    p.get_young_diagram(ax, x_offset, y_offset)
+                    x_offset += max(p) + 2
+                x_offset = 0
+                y_offset += max(len(p1) for p1 in seq) + 2
+
+        ax.set_aspect('equal')
+        ax.relim()
+        ax.autoscale_view()
+        ax.axis('off')
+        plt.show()
     
 ### ------------------------------------------------------------------------ ###
 
@@ -413,7 +462,9 @@ class LowerOrderIdeal(PartitionSet):
     
 ### ------------------------------------------------------------------------ ###
 
-p = Partition([8, 5, 1, 1])
-cs = p.get_chipping_sequences()
+p = Partition([3, 2, 1])
+p.show_chipping_sequences()
+print(p.get_chipping_sequences())
+cs = p.get_sorted_chipping_sequences()
 for s in cs:
-    print(s)
+    print(cs[s])
