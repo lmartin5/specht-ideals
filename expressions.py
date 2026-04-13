@@ -90,6 +90,12 @@ class HilbExpr:
         """
         return sp.degree(self.h, t)
     
+    def LC(self):
+        """
+        Leading coefficient of numerator polynomial
+        """
+        return sp.LC(self.h, t)
+    
 class EquivHilbExpr:
     def __init__(self, numerator, denominator=1, simplify=False):
         """

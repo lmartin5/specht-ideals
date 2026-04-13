@@ -79,3 +79,37 @@ def lower_ideal_generators(mu: Partition, i):
         return [ith_compression.remove_from_part(i)]
 
     return [mu.remove_from_part(m), ith_compression.remove_from_part(i), ith_compression.remove_from_part(m)]
+
+# p = Partition([3, 1, 1])
+# print("H:", specht_hilbert_series(p))
+
+p = Partition([2, 2, 2])
+print(specht_hilbert_series(p))
+for k in range(1, len(p) + 1):
+    print("k:", k, "gens:", lower_ideal_generators(p, k))
+
+for a in range(9, 10):
+    info = []
+    for k in range(0,9):
+        p = Partition([2 + k] + [2]*(a-1))
+        hs = specht_hilbert_series(p)
+        info.append([hs.degree(), hs.LC()])
+    print("a:", a, "degrees:", info)
+    
+# for k in range(0, 10):
+#     p = Partition([2 + k, 2, 2, 2, 2, 2, 1, 1])
+#     print("k:", k, "Hilb Ser:", specht_hilbert_series(p))
+#     print()
+
+# p = Partition([2, 2, 2, 1, 1, 1, 1])
+# print(specht_hilbert_series(p))
+# for k in range(1, len(p) + 1):
+#     print("k:", k, "gens:", lower_ideal_generators(p, k))
+
+# for k in range(0, 15):
+#     p = Partition([4 + k, 4, 3])
+#     q = Partition([5 + k, 2, 2, 2])
+#     # L = LowerOrderIdeal(10 + k, [p, q])
+#     # print(ideal_specht_hilbert_series(L))
+#     print("k:", k, "H:", specht_hilbert_series(p) + specht_hilbert_series(q) - specht_hilbert_series(p.meet(q)))
+#     print()

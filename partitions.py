@@ -137,6 +137,8 @@ class Partition:
             else:
                 meet_parts.append(m_part)
 
+        return Partition(meet_parts)
+
     def less_than_ideal(self):
         return LowerOrderIdeal(sum(self), [self])
     
