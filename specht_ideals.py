@@ -1,8 +1,12 @@
 from partitions import *
 from expressions import *
 import math
+from math import comb
 import sympy as sp
 t = sp.symbols('t')
+from random import randrange
+import sys
+import itertools
 
 # hilbert series of I_mu, where mu is a partition
 def specht_hilbert_series(mu: Partition):    
@@ -80,22 +84,52 @@ def lower_ideal_generators(mu: Partition, i):
 
     return [mu.remove_from_part(m), ith_compression.remove_from_part(i), ith_compression.remove_from_part(m)]
 
-# p = Partition([3, 1, 1])
-# print("H:", specht_hilbert_series(p))
+# for k in range(8):
+#     p = Partition([3 + k, 3, 1, 1])
+#     print("k:", k, "HS:", specht_hilbert_series(p))
 
-p = Partition([2, 2, 2])
-print(specht_hilbert_series(p))
-for k in range(1, len(p) + 1):
-    print("k:", k, "gens:", lower_ideal_generators(p, k))
+# p = Partition([3, 3, 1])
+# print("p:", p, "HS:", specht_hilbert_series(p))
+# for k in range(1, len(p) + 1):
+#      print("k:", k, "gens:", lower_ideal_generators(p, k))
 
-for a in range(9, 10):
-    info = []
-    for k in range(0,9):
-        p = Partition([2 + k] + [2]*(a-1))
-        hs = specht_hilbert_series(p)
-        info.append([hs.degree(), hs.LC()])
-    print("a:", a, "degrees:", info)
-    
+# a, b, c = 0, 0, 0
+# for a in range(0, 6):
+#     for b in range(2, 7):
+#         info = []
+#         for k in range(0,8):
+#             p = Partition([2 + k] + [2]*(b-1) + [1]*a)
+#             hs = specht_hilbert_series(p)
+#             info.append([hs.degree(), hs.LC()])
+#         print("a, b, c:", a, b, c, "(deg, l.c.):", info)
+#     print("************************************")
+
+# a = 0
+# for b in range(3, 4):
+#     for c in range(2, 6):
+#         p = Partition([4] + [3]*(c -1) + [2]*b)
+#         hs = specht_hilbert_series(p)
+#         pprime = lower_ideal_generators(p, len(p) - 1)[2]
+#         hsprime = specht_hilbert_series(pprime)
+#         print(p, hs)
+#         print()
+#         print(pprime, hsprime)
+#         print("************************************************")
+
+# for lam3 in range(2,8):
+#     for lam2 in range(lam3, lam3+4):
+#         for lam1 in range(lam2, lam2+4):
+#             for alen in range(5,9):
+#                 p = Partition([lam1, lam2, lam3] + [1]*(alen-3))
+#                 guess = comb(len(p),2) + p[1]*(len(p) - 2) + p[2]*(len(p)-1) + p[3]*(len(p)-1) - 3*len(p) + 3
+#                 print(specht_hilbert_series(p).degree(), guess, p)
+
+# for p in Partitions(15):
+#     if p[1] > 1:
+#         p = Partition(p.parts + [1,1])
+#         guess = comb(len(p),2) + (len(p) - 2)*p[1] + (len(p) - 1)*(sum(p[i] - 1 for i in range(2, len(p) + 1)) - 1)
+#         print(specht_hilbert_series(p).degree(), guess, p) 
+
 # for k in range(0, 10):
 #     p = Partition([2 + k, 2, 2, 2, 2, 2, 1, 1])
 #     print("k:", k, "Hilb Ser:", specht_hilbert_series(p))
@@ -106,10 +140,150 @@ for a in range(9, 10):
 # for k in range(1, len(p) + 1):
 #     print("k:", k, "gens:", lower_ideal_generators(p, k))
 
-# for k in range(0, 15):
-#     p = Partition([4 + k, 4, 3])
-#     q = Partition([5 + k, 2, 2, 2])
-#     # L = LowerOrderIdeal(10 + k, [p, q])
-#     # print(ideal_specht_hilbert_series(L))
-#     print("k:", k, "H:", specht_hilbert_series(p) + specht_hilbert_series(q) - specht_hilbert_series(p.meet(q)))
-#     print()
+# for k in range(0, 8):
+#     p = Partition([3 + k, 1, 1, 1])
+#     q = Partition([2 + k, 2, 2])
+#     L = LowerOrderIdeal(6 + k, [p, q])
+#     print(ideal_specht_hilbert_series(L))
+#     I = L.smaller_ideal(2)
+#     print(I)
+#     print(ideal_specht_hilbert_series(I))
+#     print(specht_hilbert_series(p))
+#     print(specht_hilbert_series(q))
+#     print("*************************************")
+
+def formula(p):
+    w = len(p)
+    deg = 0
+    deg += (w - 2)*p[1]
+    deg += (w - 1)*(sum(p) - p[1])
+    if w - p[w] + 1 >= 2:
+        deg -= comb(w - p[w] + 1, 2)
+    return deg
+
+def recursive_terms(p):
+    for i in range(1, len(p) + 1):
+        print("*******", i, "*********")
+        gens = lower_ideal_generators(p, i)
+        for gen in gens:
+            hs = specht_hilbert_series(gen)
+            print("Partiion:", gen, "Deg:", hs.degree(), "LC:", hs.LC())
+    print("**************")
+
+def find_stabilization(p):
+    parts = p.parts.copy()
+    curr_hil_ser = specht_hilbert_series(p)
+    curr_deg = curr_hil_ser.degree()
+    curr_lc = curr_hil_ser.LC()
+    curr_deg_guess = formula(p)
+
+    stabilization_not_found = True
+    k = 0
+    while stabilization_not_found:
+        parts[0] += 1
+        new_p = Partition(parts)
+        new_hil_ser = specht_hilbert_series(new_p)
+        new_deg = new_hil_ser.degree()
+        new_lc = new_hil_ser.LC()
+        new_deg_guess = formula(new_p)
+
+        if new_deg - curr_deg == len(p) - 2:
+            print(p, "chain stabilized at k =", k)
+            print("Degree:", curr_deg)
+            print("Formula Guess:", curr_deg_guess)
+            print("LC:", curr_lc)
+            print("Next LC:", new_lc)
+            break
+
+        k += 1
+        curr_hil_ser = new_hil_ser
+        curr_deg = new_deg
+        curr_lc = new_lc
+        curr_deg_guess = new_deg_guess
+
+
+# p = Partition([18, 4, 4, 4])
+# deg = specht_hilbert_series(p).degree()
+# guess = formula(p)
+# print(p, specht_hilbert_series(p).degree(), guess)
+
+# for j in range(100):
+#     parts = []
+#     for k in range(randrange(2, 5)):
+#         parts.append(randrange(2, 9))
+#     p = Partition(parts)
+#     print("****************")
+#     for i in range(10):
+#         new_parts = p.parts.copy()
+#         new_parts[0] += i
+#         q = Partition(new_parts)
+#         deg = specht_hilbert_series(q).degree()
+#         guess = formula(q)
+#         print(q, deg, guess)
+#         if guess == deg:
+#             print("YIPPPPEEEE")
+#             break
+#         if i == 9:
+#             print("GULLLLP")
+#             sys.exit(1)
+        
+
+# for j in range(10):
+#     parts = []
+#     for i in range(4):
+#         parts.append(randrange(4, 7))
+#     parts.append(4)
+#     parts[0] += 4
+#     p = Partition(parts)
+#     deg = specht_hilbert_series(p).degree()
+#     guess = formula(p)
+#     print(p, specht_hilbert_series(p).degree(), guess)
+
+# print(list(itertools.combinations_with_replacement(range(1, 5), 4)))
+
+find_stabilization(Partition([6, 2, 2, 2, 2, 1, 1, 1]))
+
+recursive_terms(Partition([6, 2, 2, 2, 2, 1, 1, 1]))
+
+# for n in range(2, 21):
+#     for p in Partitions(n):
+#         if len(p) == 7 and p[1] == p[2] and p[2] == 2:
+#             find_stabilization(p)
+#             print("*******************")
+
+# for combos in list(itertools.combinations_with_replacement(range(1, 5), 4)):
+#     parts = list(combos)
+#     parts.sort(reverse=True)
+#     if parts[0] == parts[1]:
+#         for k in range(8):
+#             p = Partition(parts)
+#             deg = specht_hilbert_series(p).degree()
+#             guess = formula(p)
+#             print(p, deg, specht_hilbert_series(p).LC())
+#             parts[0] += 1
+#         print("**************************")
+
+# p = Partition([9, 5, 4])
+# deg = specht_hilbert_series(p).degree()
+# guess = formula(p)
+# print(p, specht_hilbert_series(p).degree(), specht_hilbert_series(p).LC())
+
+# p = Partition([8, 4, 4])
+# deg = specht_hilbert_series(p).degree()
+# guess = formula(p)
+# print(p, specht_hilbert_series(p).degree(), specht_hilbert_series(p).LC())
+
+# p = Partition([9, 4, 4])
+# deg = specht_hilbert_series(p).degree()
+# guess = formula(p)
+# print(p, specht_hilbert_series(p).degree(), specht_hilbert_series(p).LC())
+
+# p = Partition([8, 5, 3])
+# deg = specht_hilbert_series(p).degree()
+# guess = formula(p)
+# print(p, specht_hilbert_series(p).degree(), specht_hilbert_series(p).LC())
+
+# p = Partition([9, 5, 3])
+# deg = specht_hilbert_series(p).degree()
+# guess = formula(p)
+# print(p, specht_hilbert_series(p).degree(), specht_hilbert_series(p).LC())
