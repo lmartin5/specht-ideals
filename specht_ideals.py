@@ -4,9 +4,11 @@ import math
 from math import comb
 import sympy as sp
 t = sp.symbols('t')
+s = sp.symbols('s')
 from random import randrange
 import sys
 import itertools
+import random
 
 # hilbert series of I_mu, where mu is a partition
 def specht_hilbert_series(mu: Partition):    
@@ -45,6 +47,54 @@ def specht_hilbert_series(mu: Partition):
         hilbert_series[p] = hs
 
     return hilbert_series[mu]
+
+# gives sum_{i = 0 to n} (s / (1 - t))^i
+# TODO: may be better to have this already in a simplified form
+def first_n_geometric(n):
+    numerator = sum(s**i * (1 - t)**(n - i) for i in range(n + 1))
+    return EquivHilbExpr(numerator, {1 - t: n}, simplify=True)
+
+# equiv hilbert series of I_mu, where mu is a partition
+def equiv_specht_hilbert_series(mu: Partition):
+    # base cases
+    if len(mu) == 1:
+        return first_n_geometric(sum(mu) - 1)
+    if mu[1] == 1:
+        n = len(mu)
+        num = (1-t)
+        for i in range(1,n):
+            num *= 1 - t - s + s*t**i
+        num += -s**n * t**(math.comb(n, 2))
+        den = {1-t-s: 1, 1-t: n-1}
+        for i in range(1,n):
+            den[1 - s * sum(t**j for j in range(0, i))] = 1
+        return EquivHilbExpr(num, den, simplify=True)
+
+    ehs = EquivHilbExpr(0)
+    w = len(mu)
+    n = sum(mu)
+    ehs += first_n_geometric(n - 1) * (1 - s * (sum(t**j for j in range(0, w-1)) + EquivHilbExpr(t**(w - 1), 1 - t)))
+    hs = specht_hilbert_series(mu)
+    ehs += EquivHilbExpr(s**n, 1) * hs
+
+    mu_plus_one = mu.add_to_part(1)
+    denom_factor = 1
+    for i in range(1, w-1):
+        gens = lower_ideal_generators(mu_plus_one, i+1)
+        if gens[0] == mu:
+            denom_factor += t**i
+        else:
+            ehs += s * t**i * equiv_specht_hilbert_series(gens[0])
+        if len(gens) > 1:
+            ehs += s * t**i * equiv_specht_hilbert_series(gens[1])
+            ehs += -s * t**i * equiv_specht_hilbert_series(gens[2])
+
+    gens = lower_ideal_generators(mu_plus_one, w)
+    ehs += s * EquivHilbExpr(t**(w - 1), 1 - t) * equiv_specht_hilbert_series(gens[0])
+    ehs *= EquivHilbExpr(1, 1 - s*denom_factor)
+    ehs.simplify()
+
+    return ehs
 
 # hilbert series of I_L, where L is a lower order ideal
 def ideal_specht_hilbert_series(L: LowerOrderIdeal):
@@ -201,6 +251,46 @@ def find_stabilization(p):
         curr_lc = new_lc
         curr_deg_guess = new_deg_guess
 
+def check_equiv_series(mu: Partition):
+    n = sum(mu)
+    ehs = equiv_specht_hilbert_series(mu)
+
+    print("Checking for mu=", mu)
+
+    for i in range(n):
+        guess_hs = ehs.s_coeff(i)
+        if guess_hs == HilbExpr(1, i):
+            print("Great")
+        else:
+            print("Boooo")
+            print(guess_hs)
+
+    for i in range(n, n + 6):
+        guess_hs = ehs.s_coeff(i)
+        mu_plus_k = mu.update_part(1, mu[1] + i - n)
+        print(mu_plus_k)
+        hs = specht_hilbert_series(Partition(mu_plus_k))
+        if guess_hs == hs:
+            print("Great")
+        else:
+            print("Boooo")
+            print(hs)
+            print(guess_hs)
+    print("*****************")
+
+p1 = Partition([1,1,1,1,1,1,1,1])
+p2 = Partition([2,1,1,1,1,1,1])
+
+print(specht_hilbert_series(p1) - specht_hilbert_series(p2))
+
+# ehs = equiv_specht_hilbert_series(Partition([2, 2, 2]))
+# print(ehs)
+# print(ehs.n.subs(t,1))
+
+# for n in range(1, 11):
+#     for p in Partitions(n):
+#         print("$",p,"$", " & $", equiv_specht_hilbert_series(p).latex_denom_string(), "$ \\\ \\hline", sep="")
+#     print('*************************************')
 
 # p = Partition([18, 4, 4, 4])
 # deg = specht_hilbert_series(p).degree()
@@ -241,9 +331,9 @@ def find_stabilization(p):
 
 # print(list(itertools.combinations_with_replacement(range(1, 5), 4)))
 
-find_stabilization(Partition([6, 2, 2, 2, 2, 1, 1, 1]))
+# find_stabilization(Partition([6, 2, 2, 2, 2, 1, 1, 1]))
 
-recursive_terms(Partition([6, 2, 2, 2, 2, 1, 1, 1]))
+# recursive_terms(Partition([6, 2, 2, 2, 2, 1, 1, 1]))
 
 # for n in range(2, 21):
 #     for p in Partitions(n):
@@ -262,6 +352,20 @@ recursive_terms(Partition([6, 2, 2, 2, 2, 1, 1, 1]))
 #             print(p, deg, specht_hilbert_series(p).LC())
 #             parts[0] += 1
 #         print("**************************")
+
+# for p in Partitions(16):
+#     if len(p) >= 3 and p[1] == p[2] and p[1] > 1:
+#         for l in range(2, len(p)):
+#             if p[l] == p[l+1] and p[l] > 1:
+#                 print("P:", p, "i:", l)
+#                 for k in range(1, 6):
+#                     new_parts = p.parts.copy()
+#                     new_parts[0] += k
+#                     new_p = Partition(new_parts)
+#                     gens = lower_ideal_generators(new_p, l)
+#                     print(gens)
+#                     print("Gen HS:", specht_hilbert_series(gens[1]) - specht_hilbert_series(gens[2]))
+#                 print("**************************************")
 
 # p = Partition([9, 5, 4])
 # deg = specht_hilbert_series(p).degree()
@@ -287,3 +391,61 @@ recursive_terms(Partition([6, 2, 2, 2, 2, 1, 1, 1]))
 # deg = specht_hilbert_series(p).degree()
 # guess = formula(p)
 # print(p, specht_hilbert_series(p).degree(), specht_hilbert_series(p).LC())
+
+def check_conjecture(p):
+    for q in p.get_covered_partitions():
+        print("p:", p, "q:", q)
+        print("p_len:", len(p), "q_len:", len(q))
+        i = min((j for j in range(1, len(p) + 1) if p[j] > q[j]), default=len(p))
+        jump_distance = min((j for j in range(1, len(p) + 1) if q[j] == p[j] + 1), default=len(p)+1) - i
+        print("Box removed from row", i, "and jump distance of", jump_distance)
+
+        old_p_minus_q = 0
+        for k in range(0, 3):
+            p_parts = p.parts.copy()
+            q_parts = q.parts.copy()
+            p_parts[0] += k
+            q_parts[0] += k
+
+            new_p_minus_q_degree = (specht_hilbert_series(Partition(p_parts)) - specht_hilbert_series(Partition(q_parts))).degree()
+            print(new_p_minus_q_degree, end=" ")
+
+            if k < 5:
+                old_p_minus_q = new_p_minus_q_degree
+            else:
+                print("Length:", len(p), "Degree Difference:", new_p_minus_q_degree - old_p_minus_q)
+                if new_p_minus_q_degree - old_p_minus_q == i + jump_distance - 2:
+                    print("Great!")
+                else:
+                    print("Grrrrr")
+        print("*************************************************")
+
+
+# print(lower_ideal_generators(Partition([6, 4, 3, 3, 3, 1]), 4))
+# check_conjecture(Partition([7, 5, 5, 1]))
+
+# n = 15
+# partitions = Partitions(n)
+
+# for j in range(20):
+#     found_pair = False
+#     while not found_pair:
+#         p_1 = random.choice(partitions.partitions)
+#         p_2 = random.choice(partitions.partitions)
+#         if not (p_1 <= p_2) and not (p_2 <= p_1):
+#             found_pair = True
+
+#     print(p_1, p_2)
+#     for k in range(6):
+#         p_1_parts = p_1.parts.copy()
+#         p_2_parts = p_2.parts.copy()
+#         p_1_parts[0] += k
+#         p_2_parts[0] += k
+#         p_1_k = Partition(p_1_parts)
+#         p_2_k = Partition(p_2_parts)
+#         p_3_k = p_1_k.meet(p_2_k)
+#         p_1_hs = specht_hilbert_series(p_1_k)
+#         p_2_hs = specht_hilbert_series(p_2_k)
+#         p_3_hs = specht_hilbert_series(p_3_k)
+#         print((p_1_hs + p_2_hs - p_3_hs).degree())
+#     print("********************************************************")
